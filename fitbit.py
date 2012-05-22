@@ -4,9 +4,11 @@ A Python library for accessing the FitBit API.
 This library provides a wrapper to the FitBit API and does not provide storage of tokens or caching if that is required.
 
 Most of the code has been adapted from: https://groups.google.com/group/fitbit-api/browse_thread/thread/0a45d0ebed3ebccb
+
+5/22/2012 - JCF - Updated to work with python-oauth2 https://github.com/dgouldin/python-oauth2
 """
-import os, httplib 
-from oauth import oauth 
+import os, httplib
+import oauth2 as oauth 
 
 
 # pass oauth request to server (use httplib.connection passed in as param) 
@@ -22,7 +24,7 @@ class FitBit():
     
     def FetchResponse(self, oauth_request, connection, debug=DEBUG): 
         url = oauth_request.to_url() 
-        connection.request(oauth_request.http_method,url) 
+        connection.request(oauth_request.method,url) 
         response = connection.getresponse() 
         s=response.read() 
         if debug: 
@@ -32,13 +34,13 @@ class FitBit():
    
     def GetRequestToken(self): 
         connection = httplib.HTTPSConnection(self.SERVER) 
-        consumer = oauth.OAuthConsumer(self.CONSUMER_KEY, self.CONSUMER_SECRET)  
-        signature_method = oauth.OAuthSignatureMethod_PLAINTEXT() 
-        oauth_request = oauth.OAuthRequest.from_consumer_and_token(consumer, http_url=self.REQUEST_TOKEN_URL) 
+        consumer = oauth.Consumer(self.CONSUMER_KEY, self.CONSUMER_SECRET)  
+        signature_method = oauth.SignatureMethod_PLAINTEXT() 
+        oauth_request = oauth.Request.from_consumer_and_token(consumer, http_url=self.REQUEST_TOKEN_URL) 
         oauth_request.sign_request(signature_method, consumer, None) 
 
         resp = self.FetchResponse(oauth_request, connection) 
-        auth_token = oauth.OAuthToken.from_string(resp) 
+        auth_token = oauth.Token.from_string(resp) 
 
         #build the URL
         authkey = str(auth_token.key) 
@@ -49,13 +51,13 @@ class FitBit():
     def GetAccessToken(self, access_code, auth_token):
         oauth_verifier = access_code
         connection = httplib.HTTPSConnection(self.SERVER) 
-        consumer = oauth.OAuthConsumer(self.CONSUMER_KEY, self.CONSUMER_SECRET) 
-        signature_method = oauth.OAuthSignatureMethod_PLAINTEXT() 
-        oauth_request = oauth.OAuthRequest.from_consumer_and_token(consumer, token=auth_token, http_url=self.ACCESS_TOKEN_URL, parameters={'oauth_verifier': oauth_verifier}) 
+        consumer = oauth.Consumer(self.CONSUMER_KEY, self.CONSUMER_SECRET) 
+        signature_method = oauth.SignatureMethod_PLAINTEXT() 
+        oauth_request = oauth.Request.from_consumer_and_token(consumer, token=auth_token, http_url=self.ACCESS_TOKEN_URL, parameters={'oauth_verifier': oauth_verifier}) 
         oauth_request.sign_request(signature_method, consumer, auth_token) 
         # now the token we get back is an access token 
         # parse the response into an OAuthToken object 
-        access_token = oauth.OAuthToken.from_string(self.FetchResponse(oauth_request,connection)) 
+        access_token = oauth.Token.from_string(self.FetchResponse(oauth_request,connection)) 
    
         # store the access token when returning it 
         access_token = access_token.to_string() 
@@ -67,12 +69,13 @@ class FitBit():
         #apiCall = '/1/user/-/profile.json' 
         #apiCall = '/1/user/-/activities/date/2011-06-17.json'
         
-        signature_method = oauth.OAuthSignatureMethod_PLAINTEXT() 
+        signature_method = oauth.SignatureMethod_PLAINTEXT() 
         connection = httplib.HTTPSConnection(self.SERVER) 
         #build the access token from a string
-        access_token = oauth.OAuthToken.from_string(access_token)
-        consumer = oauth.OAuthConsumer(self.CONSUMER_KEY, self.CONSUMER_SECRET)  
-        oauth_request = oauth.OAuthRequest.from_consumer_and_token(consumer, token=access_token, http_url=apiCall) 
+        access_token = oauth.Token.from_string(access_token)
+        consumer = oauth.Consumer(self.CONSUMER_KEY, self.CONSUMER_SECRET)
+        final_url = 'http://' + self.SERVER + apiCall
+        oauth_request = oauth.Request.from_consumer_and_token(consumer, token=access_token, http_url=final_url) 
         oauth_request.sign_request(signature_method, consumer, access_token) 
         headers = oauth_request.to_header(realm='api.fitbit.com') 
         connection.request('GET', apiCall, headers=headers) 

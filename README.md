@@ -1,4 +1,7 @@
-# A python library for the FitBit API
+# A python library for the FitBit API forked from https://github.com/jplattel/FitBit.py
+So far, the only change from the original project is the move to the python-oauth2 module.
+
+---
 
 Didn't see one that fitted my needs so I build my own.
 
